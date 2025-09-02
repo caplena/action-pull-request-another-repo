@@ -1,4 +1,4 @@
-# Action pull request another repository 
+# Action pull request another repository
 This GitHub Action copies a folder from the current repository to a location in another repository and create a pull request
 
 ## Example Workflow
@@ -45,10 +45,30 @@ This GitHub Action copies a folder from the current repository to a location in 
 
 
 ## ENV
-* API_TOKEN_GITHUB: You must create a personal access token in you account. Follow the link:
+* `API_TOKEN_GITHUB`: You must create a personal access token in you account. Follow the link:
 - [Personal access token](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token)
 
-> You must select the scopes: 'repo = Full control of private repositories', 'admin:org = read:org' and 'write:discussion = Read:discussion'; 
+- set Caplena as owner
+- grant repository access on:
+  - All repositories
+- add following permissions:
+  - Read only
+    - Metadata (this should be added automatically, no need to explicitly selected)
+  - Read and write:
+    - Contents, Dependabot secrets, Discussions, Issues, Pull Requests
+
+### Refresh the access token
+
+Currently the access token is a personal access token created in someone's account. The token has access to Caplena
+organization which enforces tokens to expire in maximum 60 days.
+
+To refresh an expired token:
+
+1. Click on regenerate on an already created token OR generate a new personal token as per instructions above
+
+2. Copy paste the token in 1pass (this is just a backup) under `gh token for labelhippoapi ci` (should be shared under Caplena Engineering)
+
+3. Update the `CAPLENACI` github secret under Caplena/Settings/Secrets and variables/Actions with the new token
 
 
 ## Behavior Notes
