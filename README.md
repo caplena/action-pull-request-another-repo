@@ -60,7 +60,7 @@ This GitHub Action copies a folder from the current repository to a location in 
 ### Refresh the access token
 
 Currently the access token is a personal access token created in someone's account. The token has access to Caplena
-organization which enforces tokens to expire in maximum 60 days.
+organization which enforces tokens to expire in maximum 90 days.
 
 To refresh an expired token:
 
