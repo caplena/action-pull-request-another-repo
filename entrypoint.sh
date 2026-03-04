@@ -81,7 +81,25 @@ if ! git diff --cached --quiet; then
   echo "Pushing git commit"
   git push -u origin HEAD:"$INPUT_DESTINATION_HEAD_BRANCH"
 
+  SHORT_SHA=$(printf "%.7s" "$GITHUB_SHA")
+  COMMIT_REF="$GITHUB_REPOSITORY@$SHORT_SHA"
   COMMIT_URL="https://github.com/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+  SOURCE_REPOSITORY_NAME="${GITHUB_REPOSITORY#*/}"
+  PR_TITLE_COMPUTED="$SOURCE_REPOSITORY_NAME - schema changes"
+  BODY_HEADER="## $PR_TITLE_COMPUTED"
+  LINKED_COMMIT_REF="[$COMMIT_REF]($COMMIT_URL)"
+  BODY_ENTRY="$LINKED_COMMIT_REF : source PR not found, probably a direct commit"
+
+  # Best effort: prefix with source PR title for this commit.
+  SOURCE_PR_DATA=$(gh api \
+    -H "Accept: application/vnd.github+json" \
+    "/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" 2>/dev/null || true)
+  SOURCE_PR_TITLE=$(printf "%s" "$SOURCE_PR_DATA" | jq -r '.[0].title // empty' 2>/dev/null || true)
+  SOURCE_PR_URL=$(printf "%s" "$SOURCE_PR_DATA" | jq -r '.[0].html_url // empty' 2>/dev/null || true)
+  if [ -n "$SOURCE_PR_TITLE" ] && [ -n "$SOURCE_PR_URL" ]; then
+    BODY_ENTRY="$LINKED_COMMIT_REF : [$SOURCE_PR_TITLE]($SOURCE_PR_URL)"
+  fi
+
   PR_NUMBER=$(gh pr list \
     --repo "$INPUT_DESTINATION_REPO" \
     --head "$INPUT_DESTINATION_HEAD_BRANCH" \
@@ -94,26 +112,35 @@ if ! git diff --cached --quiet; then
     echo "Updating pull request body"
     CURRENT_BODY=$(gh pr view "$PR_NUMBER" --repo "$INPUT_DESTINATION_REPO" --json body --jq '.body // ""')
     if [ -n "$CURRENT_BODY" ]; then
-      UPDATED_BODY=$(printf "%s\n- %s" "$CURRENT_BODY" "$COMMIT_URL")
+      case "$CURRENT_BODY" in
+        *"$BODY_HEADER"*)
+          BODY_WITH_HEADER="$CURRENT_BODY"
+          ;;
+        *)
+          BODY_WITH_HEADER=$(printf "%s\n\n%s" "$BODY_HEADER" "$CURRENT_BODY")
+          ;;
+      esac
+      UPDATED_BODY=$(printf "%s\n%s" "$BODY_WITH_HEADER" "$BODY_ENTRY")
     else
-      UPDATED_BODY="$COMMIT_URL"
+      UPDATED_BODY=$(printf "%s\n\n%s" "$BODY_HEADER" "$BODY_ENTRY")
     fi
-    gh pr edit "$PR_NUMBER" --repo "$INPUT_DESTINATION_REPO" -b "$UPDATED_BODY"
+    gh pr edit "$PR_NUMBER" --repo "$INPUT_DESTINATION_REPO" -t "$PR_TITLE_COMPUTED" -b "$UPDATED_BODY"
   else
     echo "Creating a pull request"
+    NEW_PR_BODY=$(printf "%s\n\n%s" "$BODY_HEADER" "$BODY_ENTRY")
     if [ -n "${INPUT_PULL_REQUEST_REVIEWERS:-}" ]; then
       gh pr create \
         --repo "$INPUT_DESTINATION_REPO" \
-        -t "$INPUT_PR_TITLE" \
-        -b "$COMMIT_URL" \
+        -t "$PR_TITLE_COMPUTED" \
+        -b "$NEW_PR_BODY" \
         -B "$INPUT_DESTINATION_BASE_BRANCH" \
         -H "$INPUT_DESTINATION_HEAD_BRANCH" \
         -r "$INPUT_PULL_REQUEST_REVIEWERS"
     else
       gh pr create \
         --repo "$INPUT_DESTINATION_REPO" \
-        -t "$INPUT_PR_TITLE" \
-        -b "$COMMIT_URL" \
+        -t "$PR_TITLE_COMPUTED" \
+        -b "$NEW_PR_BODY" \
         -B "$INPUT_DESTINATION_BASE_BRANCH" \
         -H "$INPUT_DESTINATION_HEAD_BRANCH"
     fi
