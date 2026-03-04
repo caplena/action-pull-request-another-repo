@@ -82,22 +82,18 @@ if ! git diff --cached --quiet; then
   git push -u origin HEAD:"$INPUT_DESTINATION_HEAD_BRANCH"
 
   SHORT_SHA=$(printf "%.7s" "$GITHUB_SHA")
-  COMMIT_REF="$GITHUB_REPOSITORY@$SHORT_SHA"
-  COMMIT_URL="https://github.com/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+  PUSHED_BY="${GITHUB_ACTOR:-unknown-user}"
   SOURCE_REPOSITORY_NAME="${GITHUB_REPOSITORY#*/}"
-  PR_TITLE_COMPUTED="$SOURCE_REPOSITORY_NAME - schema changes"
-  BODY_HEADER="## $PR_TITLE_COMPUTED"
-  LINKED_COMMIT_REF="[$COMMIT_REF]($COMMIT_URL)"
-  BODY_ENTRY="$LINKED_COMMIT_REF : source PR not found, probably a direct commit"
+  BODY_HEADER="$SOURCE_REPOSITORY_NAME - schema changes"
+  BODY_ENTRY="$SHORT_SHA: source PR not found - $PUSHED_BY"
 
   # Best effort: prefix with source PR title for this commit.
   SOURCE_PR_DATA=$(gh api \
     -H "Accept: application/vnd.github+json" \
     "/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" 2>/dev/null || true)
   SOURCE_PR_TITLE=$(printf "%s" "$SOURCE_PR_DATA" | jq -r '.[0].title // empty' 2>/dev/null || true)
-  SOURCE_PR_URL=$(printf "%s" "$SOURCE_PR_DATA" | jq -r '.[0].html_url // empty' 2>/dev/null || true)
-  if [ -n "$SOURCE_PR_TITLE" ] && [ -n "$SOURCE_PR_URL" ]; then
-    BODY_ENTRY="$LINKED_COMMIT_REF : [$SOURCE_PR_TITLE]($SOURCE_PR_URL)"
+  if [ -n "$SOURCE_PR_TITLE" ]; then
+    BODY_ENTRY="$SHORT_SHA: $SOURCE_PR_TITLE - $PUSHED_BY"
   fi
 
   PR_NUMBER=$(gh pr list \
@@ -124,14 +120,14 @@ if ! git diff --cached --quiet; then
     else
       UPDATED_BODY=$(printf "%s\n\n%s" "$BODY_HEADER" "$BODY_ENTRY")
     fi
-    gh pr edit "$PR_NUMBER" --repo "$INPUT_DESTINATION_REPO" -t "$PR_TITLE_COMPUTED" -b "$UPDATED_BODY"
+    gh pr edit "$PR_NUMBER" --repo "$INPUT_DESTINATION_REPO" -b "$UPDATED_BODY"
   else
     echo "Creating a pull request"
     NEW_PR_BODY=$(printf "%s\n\n%s" "$BODY_HEADER" "$BODY_ENTRY")
     if [ -n "${INPUT_PULL_REQUEST_REVIEWERS:-}" ]; then
       gh pr create \
         --repo "$INPUT_DESTINATION_REPO" \
-        -t "$PR_TITLE_COMPUTED" \
+        -t "$INPUT_PR_TITLE" \
         -b "$NEW_PR_BODY" \
         -B "$INPUT_DESTINATION_BASE_BRANCH" \
         -H "$INPUT_DESTINATION_HEAD_BRANCH" \
@@ -139,7 +135,7 @@ if ! git diff --cached --quiet; then
     else
       gh pr create \
         --repo "$INPUT_DESTINATION_REPO" \
-        -t "$PR_TITLE_COMPUTED" \
+        -t "$INPUT_PR_TITLE" \
         -b "$NEW_PR_BODY" \
         -B "$INPUT_DESTINATION_BASE_BRANCH" \
         -H "$INPUT_DESTINATION_HEAD_BRANCH"
