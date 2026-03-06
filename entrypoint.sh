@@ -53,7 +53,7 @@ git config --global user.email "$INPUT_USER_EMAIL"
 git config --global user.name "$INPUT_USER_NAME"
 
 echo "Cloning destination git repository"
-git clone "https://$CLONE_TOKEN@github.com/$INPUT_DESTINATION_REPO.git" "$CLONE_DIR"
+git clone "https://x-access-token:$CLONE_TOKEN@github.com/$INPUT_DESTINATION_REPO.git" "$CLONE_DIR"
 
 echo "Creating folder"
 mkdir -p "$CLONE_DIR/$INPUT_DESTINATION_FOLDER/"
