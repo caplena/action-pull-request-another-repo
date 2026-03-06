@@ -82,18 +82,21 @@ if ! git diff --cached --quiet; then
   git push -u origin HEAD:"$INPUT_DESTINATION_HEAD_BRANCH"
 
   SHORT_SHA=$(printf "%.7s" "$GITHUB_SHA")
+  COMMIT_URL="https://github.com/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+  LINKED_SHORT_SHA="[$SHORT_SHA]($COMMIT_URL)"
   PUSHED_BY="${GITHUB_ACTOR:-unknown-user}"
   SOURCE_REPOSITORY_NAME="${GITHUB_REPOSITORY#*/}"
   BODY_HEADER="$SOURCE_REPOSITORY_NAME - schema changes"
-  BODY_ENTRY="$SHORT_SHA: source PR not found - $PUSHED_BY"
+  BODY_ENTRY="$LINKED_SHORT_SHA: source PR not found - $PUSHED_BY"
 
-  # Best effort: prefix with source PR title for this commit.
+  # Best effort: link source PR title for this commit.
   SOURCE_PR_DATA=$(gh api \
     -H "Accept: application/vnd.github+json" \
     "/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" 2>/dev/null || true)
   SOURCE_PR_TITLE=$(printf "%s" "$SOURCE_PR_DATA" | jq -r '.[0].title // empty' 2>/dev/null || true)
-  if [ -n "$SOURCE_PR_TITLE" ]; then
-    BODY_ENTRY="$SHORT_SHA: $SOURCE_PR_TITLE - $PUSHED_BY"
+  SOURCE_PR_URL=$(printf "%s" "$SOURCE_PR_DATA" | jq -r '.[0].html_url // empty' 2>/dev/null || true)
+  if [ -n "$SOURCE_PR_TITLE" ] && [ -n "$SOURCE_PR_URL" ]; then
+    BODY_ENTRY="$LINKED_SHORT_SHA: [$SOURCE_PR_TITLE]($SOURCE_PR_URL) - $PUSHED_BY"
   fi
 
   PR_NUMBER=$(gh pr list \

@@ -69,11 +69,11 @@ pr_exists_file="${TEST_PR_EXISTS_FILE:?TEST_PR_EXISTS_FILE is required}"
 if [[ "${1:-}" == "api" ]]; then
   endpoint="${@: -1}"
   case "$endpoint" in
-    */commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/pulls)
-      printf '%s\n' '[{"title":"feature(app-9456): Add alerting detail endpoint."}]'
+    */commits/testing-chars/pulls)
+      printf '%s\n' '[{"title":"feature(app-123): testing chars","html_url":"https://google.com"}]'
       ;;
     */commits/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/pulls)
-      printf '%s\n' '[{"title":"fix(app-9460): Improve alerting filters."}]'
+      printf '%s\n' '[{"title":"fix(app-9460): Improve testing.","html_url":"https://google.com"}]'
       ;;
     *)
       printf '%s\n' '[]'
@@ -173,7 +173,7 @@ run_action() {
     export INPUT_COMMIT_MSG="chore(api): schema update from API"
     export INPUT_PULL_REQUEST_REVIEWERS="elibolonur"
     export API_TOKEN_GITHUB="dummy-token"
-    export GITHUB_REPOSITORY="caplena/labelhippoapi"
+    export GITHUB_REPOSITORY="caplena/helloworld"
     export GITHUB_SHA="$sha"
     export GITHUB_ACTOR="$actor"
     run_quiet bash "$ROOT_DIR/entrypoint.sh"
@@ -182,10 +182,12 @@ run_action() {
 
 echo "--- Setup done"
 echo "--- Running case: create PR body from one schema change"
-run_action "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" "onurcaplena" '{"schema":"v1"}'
+TEST_SHA="testing-chars"
+SHORT_SHA="${TEST_SHA:0:7}"
+run_action "$TEST_SHA" "username" '{"schema":"v1"}'
 
-EXPECTED_HEADER="labelhippoapi - schema changes"
-EXPECTED_FIRST_ENTRY="aaaaaaa: feature(app-9456): Add alerting detail endpoint. - onurcaplena"
+EXPECTED_HEADER="helloworld - schema changes"
+EXPECTED_FIRST_ENTRY="[$SHORT_SHA](https://github.com/caplena/helloworld/commit/$TEST_SHA): [feature(app-123): testing chars](https://google.com) - username"
 
 echo "--- Verifying PR body format"
 for expected in "$EXPECTED_HEADER" "$EXPECTED_FIRST_ENTRY"; do
