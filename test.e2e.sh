@@ -67,6 +67,19 @@ pr_number_file="${TEST_PR_NUMBER_FILE:?TEST_PR_NUMBER_FILE is required}"
 pr_exists_file="${TEST_PR_EXISTS_FILE:?TEST_PR_EXISTS_FILE is required}"
 
 if [[ "${1:-}" == "api" ]]; then
+  if [[ "${2:-}" == "PATCH" ]]; then
+    body=""
+    prev=""
+    for arg in "$@"; do
+      if [[ "$prev" == "-f" && "$arg" == body=* ]]; then
+        body="${arg#body=}"
+      fi
+      prev="$arg"
+    done
+    printf '%s' "$body" > "$pr_body_file"
+    exit 0
+  fi
+
   endpoint="${@: -1}"
   case "$endpoint" in
     */commits/testing-chars/pulls)
@@ -113,20 +126,6 @@ if [[ "${1:-}" == "pr" && "${2:-}" == "create" ]]; then
   printf '%s' "1" > "$pr_exists_file"
   printf '%s' "$body" > "$pr_body_file"
   printf '%s' "$title" > "$pr_title_file"
-  exit 0
-fi
-
-if [[ "${1:-}" == "pr" && "${2:-}" == "edit" ]]; then
-  body=""
-  prev=""
-  for arg in "$@"; do
-    if [[ "$prev" == "-b" ]]; then
-      body="$arg"
-      break
-    fi
-    prev="$arg"
-  done
-  printf '%s' "$body" > "$pr_body_file"
   exit 0
 fi
 

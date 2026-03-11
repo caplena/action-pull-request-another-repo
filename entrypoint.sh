@@ -123,7 +123,10 @@ if ! git diff --cached --quiet; then
     else
       UPDATED_BODY=$(printf "%s\n\n%s" "$BODY_HEADER" "$BODY_ENTRY")
     fi
-    gh pr edit "$PR_NUMBER" --repo "$INPUT_DESTINATION_REPO" -b "$UPDATED_BODY"
+    gh api \
+      --method PATCH \
+      "/repos/$INPUT_DESTINATION_REPO/pulls/$PR_NUMBER" \
+      -f body="$UPDATED_BODY" >/dev/null
   else
     echo "Creating a pull request"
     NEW_PR_BODY=$(printf "%s\n\n%s" "$BODY_HEADER" "$BODY_ENTRY")
